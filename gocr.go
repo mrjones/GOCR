@@ -90,7 +90,7 @@ func uploadFile(service *drive.Service, localFileName string) error {
 	// TODO(mrjones): Make directory configurable
   parent := &drive.ParentReference{Id: "0B1SxUBEP5_X2ZEdMaW45Qy1KcFk"}
   driveFile.Parents = []*drive.ParentReference{parent}
-	_, err := service.Files.Insert(driveFile).Ocr(true).OcrLanguage("en").Media(localFile).Do();
+	_, err = service.Files.Insert(driveFile).Ocr(true).OcrLanguage("en").Media(localFile).Do();
 	if err != nil {
 		return err
 	}
@@ -152,6 +152,8 @@ func main() {
 		"directory",
 		"/home/mrjones/scans",
 		"Directory to (recursively) upload.")
+
+	flag.Parse()
 
 	configFile, err := parseConfigFile("config.json");
 	if err != nil {
