@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 )
 
 type ConfigFile struct {
@@ -73,26 +74,24 @@ func authorize(configFile *ConfigFile) (*http.Client, error) {
 }
 
 func uploadFile(service *drive.Service, localFileName string) error {
-	fmt.Println("Uploading: " + localFileName);
-	return nil
-
-//	localFile, err := os.Open(localFileName)
-//	if err != nil {
-//		return err
-//	}
-//
-//	// Make directory configurable
-//
-//
-//	driveFile := &drive.File{Title: "GOCR File"}
-//  parent := &drive.ParentReference{Id: "0B1SxUBEP5_X2ZEdMaW45Qy1KcFk"}
-//  driveFile.Parents = []*drive.ParentReference{parent}
-//	_, err = service.Files.Insert(driveFile).Ocr(true).OcrLanguage("en").Media(localFile).Do();
-//	if err != nil {
-//		return err
-//	}
-//
+	log.Printf(" - file: %s\n", localFileName);
 //	return nil
+
+	localFile, err := os.Open(localFileName)
+	if err != nil {
+		return err
+	}
+
+	driveFile := &drive.File{Title: path.Base(localFileName)}
+	// TODO(mrjones): Make directory configurable
+  parent := &drive.ParentReference{Id: "0B1SxUBEP5_X2ZEdMaW45Qy1KcFk"}
+  driveFile.Parents = []*drive.ParentReference{parent}
+	ret, err := service.Files.Insert(driveFile).Ocr(true).OcrLanguage("en").Media(localFile).Do();
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type FilePredicate interface {
@@ -106,6 +105,7 @@ func (*AlwaysTrue) Apply(info os.FileInfo) bool {
 }
 
 func uploadDirectory(service *drive.Service, path string, shouldUpload FilePredicate) error {
+	log.Printf("Uploading directory: %s\n", path);
 	dir, err := os.Open(path)
 	if err != nil {
 		return err
@@ -127,14 +127,14 @@ func uploadDirectory(service *drive.Service, path string, shouldUpload FilePredi
 
 	for _, file := range files {
 		if file.IsDir() {
-			uploadDirectory(service, fmt.Sprintf("%s/%s", path, file.Name()), shouldUpload);
+			err = uploadDirectory(service, fmt.Sprintf("%s/%s", path, file.Name()), shouldUpload);
 		} else {
 			if shouldUpload.Apply(file) {
 				err = uploadFile(service, fmt.Sprintf("%s/%s", path, file.Name()))
-				if err != nil {
-					return err
-				}
 			}
+		}
+		if err != nil {
+			return err
 		}
 	}
 
@@ -175,6 +175,8 @@ func main() {
 //		log.Fatal(err)
 //	}
 
-	uploadDirectory(service, "/home/mrjones/scans", &AlwaysTrue{})
-
+	err = uploadDirectory(service, "/home/mrjones/scans", &AlwaysTrue{})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
