@@ -73,19 +73,75 @@ func authorize(configFile *ConfigFile) (*http.Client, error) {
 }
 
 func uploadFile(service *drive.Service, localFileName string) error {
-	localFile, err := os.Open(localFileName)
+	fmt.Println("Uploading: " + localFileName);
+	return nil
+
+//	localFile, err := os.Open(localFileName)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// Make directory configurable
+//
+//
+//	driveFile := &drive.File{Title: "GOCR File"}
+//  parent := &drive.ParentReference{Id: "0B1SxUBEP5_X2ZEdMaW45Qy1KcFk"}
+//  driveFile.Parents = []*drive.ParentReference{parent}
+//	_, err = service.Files.Insert(driveFile).Ocr(true).OcrLanguage("en").Media(localFile).Do();
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+}
+
+type FilePredicate interface {
+	Apply(info os.FileInfo) bool;
+}
+
+type AlwaysTrue struct { }
+
+func (*AlwaysTrue) Apply(info os.FileInfo) bool {
+	return true;
+}
+
+func uploadDirectory(service *drive.Service, path string, predicate FilePredicate) error {
+	dir, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 
-	driveFile := &drive.File{Title: "GOCR File"}
-	_, err = service.Files.Insert(driveFile).Ocr(true).OcrLanguage("en").Media(localFile).Do();
+	info, err := dir.Stat()
 	if err != nil {
 		return err
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory.", path)
+	}
+
+	files, err := dir.Readdir(-1)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			uploadDirectory(service, fmt.Sprintf("%s/%s", path, file.Name()), predicate);
+		} else {
+			if predicate.Apply(file) {
+				err = uploadFile(service, fmt.Sprintf("%s/%s", path, file.Name()))
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	return nil
 }
+
+
 
 func main() {
 	configFile, err := parseConfigFile("config.json");
@@ -105,18 +161,20 @@ func main() {
 	}
 
 // Code to list files, just to test that things work
-	res, err := service.Files.List().Do()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, f := range res.Items {
-		fmt.Printf("%s (%s)\n", f.Id, f.Title);
-	}
+//	res, err := service.Files.List().Do()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	for _, f := range res.Items {
+//		fmt.Printf("%s (%s)\n", f.Id, f.Title);
+//	}
 
 //	err = uploadFile(service, "/home/mrjones/gocrtest.jpg")
 //	if err != nil {
 //		log.Fatal(err)
 //	}
+
+	uploadDirectory(service, "/home/mrjones/scans", &AlwaysTrue{})
 
 }
