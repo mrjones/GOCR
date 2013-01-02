@@ -43,24 +43,36 @@ func authorize(configFile *ConfigFile) (*http.Client, error) {
 		RedirectURL: "oob",
 	}
 
-	url := config.AuthCodeURL("")
-  fmt.Println("Visit this URL to get a code, then type it in below:")
-  fmt.Println(url)
-
-	verificationCode := ""
-	fmt.Scanln(&verificationCode)
-
-
 	transport := &oauth.Transport{Config: config}
-	_, err := transport.Exchange(verificationCode)
+
+	tokenCache := oauth.CacheFile("tokens.cache")
+
+	token, err := tokenCache.Token()
 	if err != nil {
-		return nil, err
+		url := config.AuthCodeURL("")
+		fmt.Println("Visit this URL to get a code, then type it in below:")
+		fmt.Println(url)
+
+		verificationCode := ""
+		fmt.Scanln(&verificationCode)
+
+		token, err := transport.Exchange(verificationCode)
+		if err != nil {
+			return nil, err
+		}
+
+		err = tokenCache.PutToken(token)
+		if err != nil {
+			log.Printf("Error: %s\n", err)
+		}
+	} else {
+		transport.Token = token
 	}
 
 	return transport.Client(), nil
 }
 
-func upload(service *drive.Service, localFileName string) error {
+func uploadFile(service *drive.Service, localFileName string) error {
 	localFile, err := os.Open(localFileName)
 	if err != nil {
 		return err
@@ -93,18 +105,18 @@ func main() {
 	}
 
 // Code to list files, just to test that things work
-//	res, err := service.Files.List().Do()
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	for _, f := range res.Items {
-//		fmt.Printf("%s (%s)\n", f.Id, f.Title);
-//	}
-
-	err = upload(service, "/home/mrjones/gocrtest.jpg")
+	res, err := service.Files.List().Do()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	for _, f := range res.Items {
+		fmt.Printf("%s (%s)\n", f.Id, f.Title);
+	}
+
+//	err = uploadFile(service, "/home/mrjones/gocrtest.jpg")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
 
 }
