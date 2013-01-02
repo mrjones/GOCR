@@ -105,7 +105,7 @@ func (*AlwaysTrue) Apply(info os.FileInfo) bool {
 	return true;
 }
 
-func uploadDirectory(service *drive.Service, path string, predicate FilePredicate) error {
+func uploadDirectory(service *drive.Service, path string, shouldUpload FilePredicate) error {
 	dir, err := os.Open(path)
 	if err != nil {
 		return err
@@ -127,9 +127,9 @@ func uploadDirectory(service *drive.Service, path string, predicate FilePredicat
 
 	for _, file := range files {
 		if file.IsDir() {
-			uploadDirectory(service, fmt.Sprintf("%s/%s", path, file.Name()), predicate);
+			uploadDirectory(service, fmt.Sprintf("%s/%s", path, file.Name()), shouldUpload);
 		} else {
-			if predicate.Apply(file) {
+			if shouldUpload.Apply(file) {
 				err = uploadFile(service, fmt.Sprintf("%s/%s", path, file.Name()))
 				if err != nil {
 					return err
