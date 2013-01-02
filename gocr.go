@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 )
 
 type ConfigFile struct {
@@ -59,6 +60,21 @@ func authorize(configFile *ConfigFile) (*http.Client, error) {
 	return transport.Client(), nil
 }
 
+func upload(service *drive.Service, localFileName string) error {
+	localFile, err := os.Open(localFileName)
+	if err != nil {
+		return err
+	}
+
+	driveFile := &drive.File{Title: "GOCR File"}
+	_, err = service.Files.Insert(driveFile).Ocr(true).OcrLanguage("en").Media(localFile).Do();
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	configFile, err := parseConfigFile("config.json");
 	if err != nil {
@@ -76,12 +92,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	res, err := service.Files.List().Do()
+// Code to list files, just to test that things work
+//	res, err := service.Files.List().Do()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	for _, f := range res.Items {
+//		fmt.Printf("%s (%s)\n", f.Id, f.Title);
+//	}
+
+	err = upload(service, "/home/mrjones/gocrtest.jpg")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, f := range res.Items {
-		fmt.Printf("%s (%s)\n", f.Id, f.Title);
-	}
 }
