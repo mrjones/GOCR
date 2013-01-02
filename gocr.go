@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 )
 
 type ConfigFile struct {
@@ -15,23 +16,22 @@ type ConfigFile struct {
 	ClientSecret string
 }
 
-func main() {
-	fmt.Println("Hello World!");
-
-	bytes, err := ioutil.ReadFile("config.json")
+func parseConfigFile(filename string) (*ConfigFile, error) {
+	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	var configFile ConfigFile;
 	err = json.Unmarshal(bytes, &configFile);
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	fmt.Println(configFile.ClientId);
+	return &configFile, nil
+}
 
-	// OAuth
+func authorize(configFile *ConfigFile) (*http.Client, error) {
 	config := &oauth.Config{
 		ClientId: configFile.ClientId,
 		ClientSecret: configFile.ClientSecret,
@@ -43,7 +43,7 @@ func main() {
 	}
 
 	url := config.AuthCodeURL("")
-  fmt.Println("Visit this URL to get a code, then run again with -code=YOUR_CODE\n")
+  fmt.Println("Visit this URL to get a code, then type it in below:")
   fmt.Println(url)
 
 	verificationCode := ""
@@ -51,20 +51,32 @@ func main() {
 
 
 	transport := &oauth.Transport{Config: config}
-	_, err = transport.Exchange(verificationCode)
+	_, err := transport.Exchange(verificationCode)
+	if err != nil {
+		return nil, err
+	}
+
+	return transport.Client(), nil
+}
+
+func main() {
+	configFile, err := parseConfigFile("config.json");
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Drive
-
-	dc, err := drive.New(transport.Client())
+	httpClient, err := authorize(configFile);
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	res, err := dc.Files.List().Do()
 
+	service, err := drive.New(httpClient)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res, err := service.Files.List().Do()
 	if err != nil {
 		log.Fatal(err)
 	}
