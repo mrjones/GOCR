@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 )
 
 type ConfigFile struct {
@@ -105,6 +106,9 @@ type FilePredicate interface {
 type AlwaysTrue struct { }
 
 func (*AlwaysTrue) Apply(info os.FileInfo) bool {
+	if strings.HasPrefix(info.Name(), ".") {
+		return false;
+	}
 	return true;
 }
 
