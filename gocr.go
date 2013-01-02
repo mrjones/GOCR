@@ -5,6 +5,7 @@ import (
 	drive "code.google.com/p/google-api-go-client/drive/v2"
 
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -144,6 +145,11 @@ func uploadDirectory(service *drive.Service, path string, shouldUpload FilePredi
 
 
 func main() {
+	var directory *string = flag.String(
+		"directory",
+		"/home/mrjones/scans",
+		"Directory to (recursively) upload.")
+
 	configFile, err := parseConfigFile("config.json");
 	if err != nil {
 		log.Fatal(err)
@@ -175,7 +181,7 @@ func main() {
 //		log.Fatal(err)
 //	}
 
-	err = uploadDirectory(service, "/home/mrjones/scans", &AlwaysTrue{})
+	err = uploadDirectory(service, *directory, &AlwaysTrue{})
 	if err != nil {
 		log.Fatal(err)
 	}
